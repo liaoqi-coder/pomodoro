@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
 </head>
 <body class="bg-gray-900 min-h-screen flex items-center justify-center font-sans">
-    <div class="bg-gray-800 rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl">
+    <div class="bg-gray-800 rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl" style="border: 1px solid var(--theme-dim);">
         <!-- 标题 -->
         <div class="text-center mb-6">
             <h1 class="text-2xl font-bold text-white flex items-center justify-center gap-2">
@@ -19,7 +19,7 @@
 
         <!-- 模式切换 -->
         <div class="flex justify-center gap-2 mb-8">
-            <button id="modePomodoro" class="px-4 py-1.5 rounded-full text-sm font-medium bg-red-500 text-white transition-all duration-200">
+            <button id="modePomodoro" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200" style="background:var(--theme-color);color:#fff">
                 专注
             </button>
             <button id="modeShortBreak" class="px-4 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all duration-200">
@@ -38,7 +38,7 @@
                     stroke-linecap="round"
                     stroke-dasharray="282.74"
                     stroke-dashoffset="0"
-                    class="transition-all duration-300"/>
+                    class="transition-all duration-300" style="stroke: var(--theme-color);"/>
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
                 <span id="timerDisplay" class="text-6xl font-light text-white tracking-widest">25:00</span>
@@ -85,6 +85,23 @@
     </div>
 
     <script>
+        // 随机配色
+        function randomColor() {
+            const hue = Math.floor(Math.random() * 360);
+            return { hue, hex: `hsl(${hue}, 70%, 55%)`, bg: `hsl(${hue}, 70%, 45%)`, light: `hsl(${hue}, 60%, 65%)`, dim: `hsl(${hue}, 30%, 30%)` };
+        }
+        let theme = randomColor();
+        function applyTheme() {
+            theme = randomColor();
+            document.documentElement.style.setProperty('--theme-color', theme.hex);
+            document.documentElement.style.setProperty('--theme-bg', theme.bg);
+            document.documentElement.style.setProperty('--theme-light', theme.light);
+            document.documentElement.style.setProperty('--theme-dim', theme.dim);
+            document.querySelector('h1 i').style.color = theme.hex;
+            document.getElementById('completedCount').style.color = theme.hex;
+        }
+        applyTheme();
+
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
 
@@ -210,21 +227,21 @@
             [modePomodoro, modeShortBreak, modeLongBreak].forEach((btn, i) => {
                 const modes = ['pomodoro', 'shortBreak', 'longBreak'];
                 if (modes[i] === currentMode) {
-                    btn.className = 'px-4 py-1.5 rounded-full text-sm font-medium bg-red-500 text-white transition-all duration-200';
+                    btn.style.background = 'var(--theme-color)';
+                    btn.style.color = '#fff';
+                    btn.className = 'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200';
                 } else {
+                    btn.style.background = 'transparent';
                     btn.className = 'px-4 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all duration-200';
                 }
             });
         }
 
-        // 更新进度条颜色
+        // 更新进度条颜色（每次刷新随机颜色）
         function updateProgressColor() {
-            const colors = {
-                pomodoro: '#ef4444',
-                shortBreak: '#22c55e',
-                longBreak: '#3b82f6'
-            };
-            progressRing.setAttribute('stroke', colors[currentMode] || '#ef4444');
+            // 每次切换模式随机一个新颜色
+            applyTheme();
+            progressRing.style.stroke = 'var(--theme-color)';
         }
 
         // 切换模式
@@ -244,7 +261,9 @@
                 shortBreak: 'fa-coffee',
                 longBreak: 'fa-bed'
             };
-            document.querySelector('h1 i').className = `fa ${icons[mode]} text-red-400`;
+            const iconEl = document.querySelector('h1 i');
+            iconEl.className = `fa ${icons[mode]}`;
+            iconEl.style.color = theme.hex;
         }
 
         // 计时结束
