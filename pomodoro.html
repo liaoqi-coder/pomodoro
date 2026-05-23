@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center font-sans">
+    <div class="bg-gray-800 rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl">
+        <!-- 标题 -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-white flex items-center justify-center gap-2">
+                <i class="fa fa-hourglass-half text-red-400"></i>
+                番茄钟
+            </h1>
+        </div>
+
+        <!-- 模式切换 -->
+        <div class="flex justify-center gap-2 mb-8">
+            <button id="modePomodoro" class="px-4 py-1.5 rounded-full text-sm font-medium bg-red-500 text-white transition-all duration-200">
+                专注
+            </button>
+            <button id="modeShortBreak" class="px-4 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all duration-200">
+                短休
+            </button>
+            <button id="modeLongBreak" class="px-4 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all duration-200">
+                长休
+            </button>
+        </div>
+
+        <!-- 倒计时圆环 -->
+        <div class="relative w-64 h-64 mx-auto mb-8">
+            <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#374151" stroke-width="6"/>
+                <circle id="progressRing" cx="50" cy="50" r="45" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-linecap="round"
+                    stroke-dasharray="282.74"
+                    stroke-dashoffset="0"
+                    class="transition-all duration-300"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span id="timerDisplay" class="text-6xl font-light text-white tracking-widest">25:00</span>
+                <span id="statusLabel" class="text-gray-400 text-sm mt-2">准备开始</span>
+            </div>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="flex justify-center items-center gap-6 mb-6">
+            <button id="btnReset" class="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 flex items-center justify-center transition-all duration-200">
+                <i class="fa fa-refresh"></i>
+            </button>
+            <button id="btnStart" class="w-16 h-16 rounded-full bg-white hover:bg-gray-200 text-gray-900 flex items-center justify-center text-2xl transition-all duration-200 shadow-lg">
+                <i class="fa fa-play"></i>
+            </button>
+            <button id="btnSkip" class="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 flex items-center justify-center transition-all duration-200">
+                <i class="fa fa-forward"></i>
+            </button>
+        </div>
+
+        <!-- 统计 -->
+        <div class="flex justify-center items-center gap-6 text-gray-400 text-sm">
+            <div class="text-center">
+                <div class="text-xl font-bold text-red-400" id="completedCount">0</div>
+                <div>已完成</div>
+            </div>
+            <div class="text-center">
+                <div class="text-xl font-bold text-white" id="currentSession">0</div>
+                <div>当前轮次</div>
+            </div>
+        </div>
+
+        <!-- 通知音选择 -->
+        <div class="mt-6 pt-4 border-t border-gray-700">
+            <div class="flex items-center justify-between text-gray-400 text-sm">
+                <span><i class="fa fa-music mr-1"></i> 提示音</span>
+                <select id="soundSelect" class="bg-gray-700 text-gray-200 rounded px-2 py-1 text-sm border border-gray-600 focus:outline-none">
+                    <option value="bell">铃声</option>
+                    <option value="digital">数字</option>
+                    <option value="gentle">轻柔</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function getAudioCtx() {
+            if (!audioCtx) audioCtx = new AudioCtx();
+            return audioCtx;
+        }
+
+        function playSound(type) {
+            try {
+                const ctx = getAudioCtx();
+                const now = ctx.currentTime;
+
+                if (type === 'bell') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.setValueAtTime(1000, now + 0.1);
+                    osc.frequency.setValueAtTime(1200, now + 0.2);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+
+                    setTimeout(() => {
+                        const osc2 = ctx.createOscillator();
+                        const gain2 = ctx.createGain();
+                        osc2.connect(gain2);
+                        gain2.connect(ctx.destination);
+                        osc2.frequency.setValueAtTime(1000, now);
+                        osc2.frequency.setValueAtTime(1200, now + 0.1);
+                        gain2.gain.setValueAtTime(0.3, now);
+                        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                        osc2.start(now);
+                        osc2.stop(now + 0.6);
+                    }, 200);
+                } else if (type === 'digital') {
+                    for (let i = 0; i < 3; i++) {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'square';
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.frequency.setValueAtTime(880 + i * 220, now + i * 0.15);
+                        gain.gain.setValueAtTime(0.2, now + i * 0.15);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.15);
+                        osc.start(now + i * 0.15);
+                        osc.stop(now + i * 0.15 + 0.15);
+                    }
+                } else if (type === 'gentle') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(528, now);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+                    osc.start(now);
+                    osc.stop(now + 1.5);
+                }
+            } catch (e) {
+                console.log('音频播放失败:', e);
+            }
+        }
+
+        // DOM 元素
+        const timerDisplay = document.getElementById('timerDisplay');
+        const progressRing = document.getElementById('progressRing');
+        const statusLabel = document.getElementById('statusLabel');
+        const btnStart = document.getElementById('btnStart');
+        const btnReset = document.getElementById('btnReset');
+        const btnSkip = document.getElementById('btnSkip');
+        const completedCount = document.getElementById('completedCount');
+        const currentSession = document.getElementById('currentSession');
+
+        const modePomodoro = document.getElementById('modePomodoro');
+        const modeShortBreak = document.getElementById('modeShortBreak');
+        const modeLongBreak = document.getElementById('modeLongBreak');
+        const soundSelect = document.getElementById('soundSelect');
+
+        const CIRCUMFERENCE = 282.74;
+
+        // 时间配置（可自定义）
+        const TIMES = {
+            pomodoro: 25 * 60,
+            shortBreak: 5 * 60,
+            longBreak: 15 * 60
+        };
+
+        let currentMode = 'pomodoro';
+        let timeLeft = TIMES.pomodoro;
+        let totalTime = TIMES.pomodoro;
+        let isRunning = false;
+        let timerId = null;
+        let completedSessions = 0;
+        let sessionInProgress = 0;
+
+        // 更新显示
+        function updateDisplay() {
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+            const offset = CIRCUMFERENCE * (1 - timeLeft / totalTime);
+            progressRing.setAttribute('stroke-dashoffset', offset);
+        }
+
+        // 更新状态文字
+        function updateStatus() {
+            const labels = {
+                pomodoro: isRunning ? '专注中...' : '专注时间',
+                shortBreak: isRunning ? '休息中...' : '短休时间',
+                longBreak: isRunning ? '休息中...' : '长休时间'
+            };
+            statusLabel.textContent = labels[currentMode];
+        }
+
+        // 更新模式按钮样式
+        function updateModeButtons() {
+            [modePomodoro, modeShortBreak, modeLongBreak].forEach((btn, i) => {
+                const modes = ['pomodoro', 'shortBreak', 'longBreak'];
+                if (modes[i] === currentMode) {
+                    btn.className = 'px-4 py-1.5 rounded-full text-sm font-medium bg-red-500 text-white transition-all duration-200';
+                } else {
+                    btn.className = 'px-4 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all duration-200';
+                }
+            });
+        }
+
+        // 更新进度条颜色
+        function updateProgressColor() {
+            const colors = {
+                pomodoro: '#ef4444',
+                shortBreak: '#22c55e',
+                longBreak: '#3b82f6'
+            };
+            progressRing.setAttribute('stroke', colors[currentMode] || '#ef4444');
+        }
+
+        // 切换模式
+        function switchMode(mode) {
+            if (isRunning) stopTimer();
+            currentMode = mode;
+            totalTime = TIMES[mode];
+            timeLeft = totalTime;
+            updateProgressColor();
+            updateModeButtons();
+            updateDisplay();
+            updateStatus();
+
+            // 更新图标
+            const icons = {
+                pomodoro: 'fa-hourglass-half',
+                shortBreak: 'fa-coffee',
+                longBreak: 'fa-bed'
+            };
+            document.querySelector('h1 i').className = `fa ${icons[mode]} text-red-400`;
+        }
+
+        // 计时结束
+        function onTimerComplete() {
+            const sound = soundSelect.value;
+            playSound(sound);
+
+            if (currentMode === 'pomodoro') {
+                completedSessions++;
+                sessionInProgress++;
+                completedCount.textContent = completedSessions;
+                currentSession.textContent = sessionInProgress;
+
+                // 4个番茄后推荐长休
+                if (sessionInProgress % 4 === 0) {
+                    if (confirm('已完成 ' + sessionInProgress + ' 个番茄！是否开始长休？')) {
+                        switchMode('longBreak');
+                        return;
+                    }
+                } else {
+                    if (confirm('番茄完成！是否开始短休？')) {
+                        switchMode('shortBreak');
+                        return;
+                    }
+                }
+            } else {
+                if (confirm('休息结束！是否开始专注？')) {
+                    switchMode('pomodoro');
+                    return;
+                }
+            }
+            resetTimer();
+        }
+
+        // 计时器逻辑
+        function startTimer() {
+            if (isRunning) return;
+            if (timeLeft <= 0) {
+                resetTimer();
+                return;
+            }
+            isRunning = true;
+            btnStart.innerHTML = '<i class="fa fa-pause"></i>';
+            updateStatus();
+
+            timerId = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    onTimerComplete();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            isRunning = false;
+            btnStart.innerHTML = '<i class="fa fa-play"></i>';
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+            }
+            updateStatus();
+        }
+
+        function resetTimer() {
+            stopTimer();
+            timeLeft = totalTime;
+            updateDisplay();
+        }
+
+        // 跳过当前阶段
+        function skipPhase() {
+            stopTimer();
+            timeLeft = 0;
+            updateDisplay();
+            onTimerComplete();
+        }
+
+        // 事件绑定
+        btnStart.addEventListener('click', () => {
+            if (isRunning) {
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        });
+
+        btnReset.addEventListener('click', resetTimer);
+        btnSkip.addEventListener('click', skipPhase);
+
+        modePomodoro.addEventListener('click', () => {
+            if (currentMode !== 'pomodoro') switchMode('pomodoro');
+        });
+        modeShortBreak.addEventListener('click', () => {
+            if (currentMode !== 'shortBreak') switchMode('shortBreak');
+        });
+        modeLongBreak.addEventListener('click', () => {
+            if (currentMode !== 'longBreak') switchMode('longBreak');
+        });
+
+        // 初始化
+        updateDisplay();
+        updateProgressColor();
+        updateStatus();
+    </script>
+</body>
+</html>
